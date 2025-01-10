@@ -1,0 +1,19 @@
+python main.py --SoccerNet_path='/garage#2/projects/data/features/baiduv2/'  \
+--Position_path '/garage/projects/video-LLM/hash_position/' \
+--model_name gpt2-train \
+--gpt_path '/garage/projects/video-LLM/pretrained-models/gpt2' \
+--features 224p_5fps.npy \
+--GPU 0 \
+--model_type gpt \
+--gpt_type gpt2 \
+--batch_size 16 \
+--framerate 1 \
+--evaluation_frequency 10 \
+--max_epochs 10 \
+--pool PerceiverResamplerGlobalPosition \
+--NMS_threshold 0.70 \
+--window_size_spotting 30 \
+--window_size_caption 30 \
+--NMS_window 30 \
+--debug \
+--stage classifying \
