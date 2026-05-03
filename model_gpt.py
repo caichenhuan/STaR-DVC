@@ -9,6 +9,9 @@ import tiktoken
 
 
 class Video2CaptionGPT(nn.Module):
+    """
+    Video2CaptionGPT模型，用于将视频特征和2D位置信息编码为字幕token序列
+    """
     def __init__(self, vocab_size, weights=None, input_size=512, window_size=15, framerate=2, pool="NetVLAD", 
                  embed_size=512, hidden_size=512, teacher_forcing_ratio=1, num_layers=2, max_seq_length=300, 
                  weights_encoder=None, freeze_encoder=False, top_k=5,

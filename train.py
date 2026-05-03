@@ -15,7 +15,10 @@ from SoccerNet.Evaluation.DenseVideoCaptioning import evaluate as evaluate_dvc
 from nlgeval import NLGEval
 from torch.nn.utils.rnn import pack_padded_sequence
 
-import wandb
+try:
+    import wandb
+except ModuleNotFoundError:
+    wandb = None
 
 caption_scorer = NLGEval(no_glove=True, no_skipthoughts=True)
 
@@ -33,6 +36,9 @@ def trainer(phase, train_loader,
             debug=False):
 
     logging.info("start training")
+
+    if wandb_use and wandb is None:
+        raise ModuleNotFoundError("wandb is not installed. Install it or disable wandb logging.")
 
     best_loss = 9e99
 
@@ -127,6 +133,18 @@ def train(phase, dataloader, model, criterion, optimizer, epoch, train=False, de
             if debug and i > 10: break
             data_time.update(time.time() - end)
             if phase == "spotting":
+                """
+                定位并识别事件发生的时间点，输出每个时间窗口的事件类别和置信度
+
+                :param feats         : 局部信息。30秒的视频的特征，(batch_size, 30, feature_dim)
+                :param video_features: 全局信息。每个元素是整个半场的视频特征，(2700, feature_dim)
+                :param positions     : 每个元素是一个列表，包含该30秒片段内的2D位置信息，最多32个样本，每个位置是 [x, y] 坐标
+                                        [[[x1,y1], [x2,y2], ...], [[x1,y1], ...], ...]
+                :param caption       : 填充后的字幕token序列
+                :param lengths       : 每个样本字幕的实际长度（token数）
+
+                :return output: 每个时间窗口的事件类别和置信度，(batch_size, 18)
+                """
                 (feats, caption), lengths, mask, caption_or, cap_id, cls_labels, video_features, positions = batch
                 feats = feats.cuda()
                 # video_features == list
@@ -153,7 +171,7 @@ def train(phase, dataloader, model, criterion, optimizer, epoch, train=False, de
                 output = model(video_features, feats, positions, caption, lengths)
                 
                 loss = criterion(output[mask], target[mask])
-            elif phase == "classifying":
+            elif phase == "classifying":  # 不用这个
                 (feats, caption), lengths, mask, caption_or, cap_id, cls_labels, video_features, positions = batch
                 feats = feats.cuda()
                 # video_features == list

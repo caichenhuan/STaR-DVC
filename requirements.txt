@@ -1,0 +1,16 @@
+numpy
+torch
+torchtext
+tqdm
+scikit-learn
+wandb
+tiktoken
+transformers
+einops
+einops-exts
+spacy
+SoccerNet
+nlgeval
+pyparsing
+sympy
+tinycudann

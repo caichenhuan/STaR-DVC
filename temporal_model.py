@@ -9,6 +9,9 @@ import tinycudann as tcnn
 from einops import rearrange, repeat
 from einops_exts import rearrange_many
 
+from efficient_memory import Filter, EfficientMemory
+
+
 def exists(val):
     return val is not None
 
@@ -22,6 +25,9 @@ def FeedForward(dim, mult=4):
     )
 
 class PositionalEncoding(nn.Module):
+    """
+    将位置信息编码到输入中，用于捕捉输入序列中的位置信息。
+    """
     def __init__(self, d_model, max_len=100):
         super(PositionalEncoding, self).__init__()
         pe = torch.zeros(max_len, d_model)
@@ -344,19 +350,21 @@ class PerceiverResamplerGlobalPosition(VisionTokenizer):
         use_global=True,
         use_position=True,
         use_homogenization=True,
+        use_efficient_memory=False,
     ):
         """
-        Perceiver module which takes in image features and outputs image tokens.
-        Args:
-            dim (int): dimension of the incoming image features
-            dim_inner (int, optional): final dimension to project the incoming image features to;
-                also the final dimension of the outputted features. If None, no projection is used, and dim_inner = dim.
-            depth (int, optional): number of layers. Defaults to 6.
-            dim_head (int, optional): dimension of each head. Defaults to 64.
-            heads (int, optional): number of heads. Defaults to 8.
-            num_latents (int, optional): number of latent tokens to use in the Perceiver;
-                also corresponds to number of tokens per sequence to output. Defaults to 64.
-            ff_mult (int, optional): dimension multiplier for the feedforward network. Defaults to 4.
+        Perceiver模块，它接收图像特征并输出图像token。
+        
+        参数说明:
+            dim (int): 输入图像特征的维度。
+            dim_inner (int, 可选): 将输入图像特征投影到的最终维度；
+                也是输出特征的最终维度。如果为None，则不做投影，dim_inner=dim。
+            depth (int, 可选): 层数。默认6。
+            dim_head (int, 可选): 每个头的维度。默认64。
+            heads (int, 可选): 注意力头的数量。默认8。
+            num_latents (int, 可选): Perceiver中使用的潜变量token数；
+                也对应每个序列输出的token数。默认64。
+            ff_mult (int, 可选): 前馈网络维度的放大倍数。默认4。
         """
         if dim_inner is not None:
             projection = nn.Linear(dim, dim_inner)
@@ -370,6 +378,7 @@ class PerceiverResamplerGlobalPosition(VisionTokenizer):
 
         # ablation use
         self.use_homogenization = use_homogenization
+        self.use_efficient_memory = use_efficient_memory
         self.homo_window = 3
         
         self.projection = projection
@@ -379,6 +388,10 @@ class PerceiverResamplerGlobalPosition(VisionTokenizer):
 
         # positional embeddings
         self.clip_pos_encoder = PositionalEncoding(dim, max_len=60)
+
+        if self.use_global and self.use_efficient_memory:
+            self.filter = Filter()
+            self.EM_y = EfficientMemory()
 
         if use_global:
             self._init_global_model(dim, global_depth, dim_head, heads, ff_mult)
@@ -477,6 +490,21 @@ class PerceiverResamplerGlobalPosition(VisionTokenizer):
         return concat_dim
 
     def pad_and_generate_attention_mask(self, x, clip_x):
+        """
+        对全局视频特征进行padding并生成注意力掩码
+        
+        作用：
+        1. 将不同长度的全局视频特征（x）pad到统一长度（最长长度 + clip长度）
+        2. 将局部窗口特征（clip_x）拼接到pad后的全局特征后面
+        3. 生成注意力掩码，标记padding位置（True表示需要mask，False表示有效位置）
+        
+        主要用于处理batch中不同样本的全局特征长度不一致的问题，确保可以batch处理
+        
+        :param x: video features shape (b, t, D)  eg. (4, 2700, 256)
+        :param clip_x: clip features shape (b, v, D)  eg. (4, 30, 256)
+        :return x: padded video features shape (b, t + v, D)
+        :return vision_attn_masks: attention masks for padded visiont tokens (i.e., x) shape (b, t + v)
+        """
         max_len = max(t.shape[0] for t in x) + clip_x.shape[1]
         if not isinstance(x, list):
             raise ValueError("x should be a list of tensors")
@@ -493,6 +521,13 @@ class PerceiverResamplerGlobalPosition(VisionTokenizer):
         return x, vision_attn_masks
     
     def hash_encode_and_mask(self, position):
+        """
+        将球员的2D位置信息编码为hash编码，隐藏层维度为24
+        
+        :param position: 2d position features shape (b, t, n, 2) eg. (4, 30, 32, 2)
+        :return hash_positions: shape (batch, t, n, 24)
+        :return hash_masks: mask掉无效位置 shape (batch, t, n) 
+        """
         hash_positions = []
         hash_masks = []
         for i in range(len(position)):
@@ -537,18 +572,16 @@ class PerceiverResamplerGlobalPosition(VisionTokenizer):
     def forward(self, x, y, position):
         """
         Args:
-            x (torch.Tensor): image features
-                shape (b, v, D)
-            y (list of torch.Tensor): video features
-                shape (b, t, D)
-            position (list): 2d position features
+            x: image features
+                shape (b, v, D)  eg. (4, 30, 256)
+            y: video features
+                shape (b, t, D)  eg. (4, 2700, 256)
+            position: 2d position features
                 shape (b, t, n, 2)
         Returns:
             shape (b, n, D) where n is self.num_latents
         """
-        b, _, d = x.shape
-        # TODO: add filter
-        # 分两个阶段
+        b, t, d = x.shape
 
         # positional embeddings
         if self.use_position:
@@ -559,23 +592,45 @@ class PerceiverResamplerGlobalPosition(VisionTokenizer):
             # default: hash_positions [16, 30, 32, 24]
 
         if self.use_global:
+            if self.use_efficient_memory:
+                # Experimental path kept for future ablations. The public release
+                # uses the original global-feature pipeline by default.
+                y_1, y_2 = self.filter.select(y, select_every=5)
+                if self.EM_y.init:
+                    self.EM_y.init_memory(y_2)
+                self.EM_y.update(y_2)
+                y = self.EM_y.insert(y_1)
+
+            # 3. Padding和注意力掩码生成
             y, vision_attn_masks = self.pad_and_generate_attention_mask(y, x)
+            
+            # 4. 位置编码
             y = self.video_pos_encoder(y)
 
+        # 局部特征位置编码
         x = self.clip_pos_encoder(x)
-        # blocks
+
+        # 初始化 latents
         latents = self.latents
         latents = repeat(latents, "n d -> b n d", b=b)
         latents = self.clip_pos_encoder(latents)
 
+        # =================================================
+        # 2D位置 & 局部特征融合模块
+        # =================================================
         if self.use_position:
+            # (b, t, 768) → (b, t, 24)
             clip_features = self.clip_projection(x).unsqueeze(2)
+
             for idx, (pos_sa, pos_attn, pos_ff) in enumerate(self.hash_layers):
                 clip_features = pos_sa(clip_features, clip_features, None) + clip_features
                 clip_features = pos_attn(hash_positions, clip_features, hash_masks) + clip_features
                 clip_features = pos_ff(clip_features) + clip_features
             clip_features = x + self.clip_reprojection(clip_features.squeeze())
 
+        # =================================================
+        # 全局特征 & latents 融合模块
+        # =================================================
         if self.use_global:
             if self.use_homogenization:
                 y = self.homogenize_video_features(y)

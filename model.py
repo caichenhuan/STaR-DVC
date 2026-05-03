@@ -14,11 +14,26 @@ from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence, pad_packed_se
 import random
 
 class VideoEncoder(nn.Module):
+    """
+    视频编码器，用于将视频特征编码为隐藏状态。
+
+    INPUT: a Tensor of shape (batch_size,window_size,feature_size)
+    OUTPUTS: a Tensor of shape (batch_size,hidden_size)
+    """
     def __init__(self, input_size=512, window_size=15, framerate=2, pool="PerceiverResamplerGlobalPosition", dropout=0.1, proj_size=768,
                  use_global=True, use_position=True, use_homogenization=True):
         """
-        INPUT: a Tensor of shape (batch_size,window_size,feature_size)
-        OUTPUTS: a Tensor of shape (batch_size,hidden_size)
+        :param input_size: 输入特征大小
+        :param window_size: 窗口大小
+        :param framerate: 帧率
+        :param pool: 池化方式
+        :param dropout: 丢弃率
+        :param proj_size: 投影大小
+        :param use_global: 是否使用全局特征
+        :param use_position: 是否使用位置特征
+        :param use_homogenization: 是否使用同化特征
+        :return: None
+
         """
 
         super(VideoEncoder, self).__init__()
@@ -95,7 +110,25 @@ def contrastive_loss(text_outputs, vision_outputs, margin=1.0):
 
 
 class Video2Classifcation(nn.Module):
+    """
+    事件分类模型，用于将视频特征分类为不同的足球事件类别。
+    
+    return:
+    - 模型输出维度：num_classes（由数据集决定，通常为17个SoccerNet事件类别）
+    - 类别索引：0 到 num_classes-1，对应不同的事件类型（如：Goal, Yellow card, Red card等）
+    """
     def __init__(self, num_classes, weights=None, input_size=512, window_size=15, framerate=2, pool="QFormer", weights_encoder=None, freeze_encoder=False, proj_size=768):
+        """
+        :param num_classes: 类别数量
+        :param weights: 权重
+        :param input_size: 输入特征大小
+        :param window_size: 窗口大小
+        :param framerate: 帧率
+        :param pool: 池化方式
+        :param weights_encoder: 编码器权重
+        :param freeze_encoder: 是否冻结编码器
+        :param proj_size: 投影大小
+        """
         super(Video2Classifcation, self).__init__()
         self.encoder = VideoEncoder(input_size, window_size, framerate, pool, proj_size=proj_size, 
                                     use_global=True, use_position=False, use_homogenization=False)

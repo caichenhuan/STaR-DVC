@@ -184,6 +184,18 @@ class SoccerNetDataset(Dataset):
     This class is used to download and pre-compute clips and captions from the SoccerNet dataset for captining training phase.
     """
     def __init__(self, path, pos_path,features="baidu_soccer_embeddings.npy", split=["train"], version=2, framerate=1, spot_window_size=15, caption_window_size=15, insert_empty_caption=False):
+        """
+        :param path: 数据集路径
+        :param pos_path: 位置数据集路径
+        :param features: 特征类型
+        :param split: 数据集分割
+        :param version: 数据集版本
+        :param framerate: 帧率
+        :param spot_window_size: 事件定位窗口大小
+        :param caption_window_size: 字幕生成窗口大小
+        :param insert_empty_caption: 是否插入空字幕
+        :return: None
+        """
         self.path = path
         self.pos_path = pos_path
         self.split = split
@@ -588,67 +600,4 @@ class PredictionCaptions(Dataset):
         return corpus
 
 if __name__ == "__main__":
-    from torch.utils.data import DataLoader
-    from SoccerNet.Evaluation.utils import AverageMeter
-    torch.manual_seed(0)
-    np.random.seed(0)
-    root = "/garage#2/projects/data/features/baiduv2/"
-    pos_root = '/garage/projects/video-LLM/position_norm_dataset/'
-    split = ['test']
-    # dataset_Test  = SoccerNetDataset(path=root, pos_path=pos_root, features="224p_5fps.npy", split=split, version=2, framerate=1, spot_window_size=30, caption_window_size=30, insert_empty_caption=False)
-    # test_loader = torch.utils.data.DataLoader(dataset_Test, batch_size=16, shuffle=False, pin_memory=True, collate_fn=collate_fn_gpt)
-    # start = time.time()
-    # for i, batch in enumerate(test_loader):
-    #     if i>0: break
-    #     (feats, caption), lengths, mask, caption_or, cap_id, cls_label, video_features, positions = batch
-    #     print("batch time: {:.4f}s, total time: {:.4f}s".format((time.time()-start)/(i+1), time.time()-start))
-    #     print(feats.shape)
-    #     print(caption)
-    #     print(lengths)
-    #     print(mask)
-    #     print(caption_or)
-    #     print(cap_id)
-    #     print(cls_label)
-    #     for j in range(len(video_features)):
-    #         print(video_features[j].shape) 
-    #     print(len(positions))
-    #     for j in range(len(positions)):
-    #         print(len(positions[j]))
-
-    # dataset_Test = SoccerNetClipsTesting(path=root, pos_path=pos_root, features="224p_5fps.npy", split=split, version=2, framerate=1, window_size=30)
-    # test_loader = DataLoader(dataset_Test, batch_size=1, num_workers=1, shuffle=False, pin_memory=True, collate_fn=collate_fn_clip)
-    # start = time.time()
-    # for i, batch in enumerate(test_loader):
-    #     game_ID, feat_half1, feat_half2, label_half1, label_half2, video_features1, video_features2, position1, position2 = batch
-    #     print(game_ID)
-    #     print(feat_half1.shape)
-    #     print(feat_half2.shape)
-    #     print(label_half1.shape)
-    #     print(label_half2.shape)
-    #     for j in range(len(video_features1)):
-    #         print(video_features1[j].shape)
-    #     for j in range(len(video_features2)):
-    #         print(video_features2[j].shape)
-    #     print(len(position1))
-    #     for j in range(len(position1)):
-    #         print(len(position1[j]))
-    #     for j in range(len(position2)):
-    #         print(len(position2[j]))
-    #     print(len(position2))
-    #     print("batch time: {:.4f}s, total time: {:.4f}s".format((time.time()-start)/(i+1), time.time()-start))
-
-    dataset_Test = PredictionCaptions(SoccerNetPath=root, pos_path=pos_root, PredictionPath="/garage/projects/video-LLM/ours-test-2/models/gpt2-train/outputs/test", features="224p_5fps.npy", split=split, version=2, framerate=1, window_size=30)
-    test_loader = DataLoader(dataset_Test, batch_size=16, shuffle=False, pin_memory=True, collate_fn=collate_fn_pred)
-    start = time.time()
-    for i, batch in enumerate(test_loader):
-        # if i>0: break
-        video_features, feats, game_id, cap_id, positions= batch
-        print(game_id)
-        print(cap_id)
-        print(feats.shape)
-        for j in range(len(video_features)):
-            print(video_features[j].shape)
-        print(len(positions))
-        for j in range(len(positions)):
-            print(len(positions[j]))
-        print("batch time: {:.4f}s, total time: {:.4f}s".format((time.time()-start)/(i+1), time.time()-start))
+    raise SystemExit("dataset.py is a library module. See README.md for dataset layout and run examples.")

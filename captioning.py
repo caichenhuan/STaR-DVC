@@ -14,8 +14,12 @@ from train import trainer, test_captioning, validate_captioning
 
 from utils import valid_probability
 
-import wandb
 import copy
+
+try:
+    import wandb
+except ModuleNotFoundError:
+    wandb = None
 
 
 def main(args):
@@ -269,6 +273,8 @@ if __name__ == '__main__':
                             datetime.now().strftime('%Y-%m-%d_%H-%M-%S.log'))
 
     if args.wandb:
+        if wandb is None:
+            raise ModuleNotFoundError("wandb is not installed. Install it or run without --wandb.")
         run = wandb.init(
         project="gpt2-caption",
         name=args.model_name

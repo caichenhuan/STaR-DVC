@@ -1,15 +1,50 @@
 import numpy as np
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+import argparse
 import os
 import torch
-import wandb
 import logging
 import time
 from datetime import datetime
-from utils import valid_probability
-import spotting
-import captioning
-import classifying
+
+try:
+    import wandb
+except ModuleNotFoundError:
+    wandb = None
+
+
+def valid_probability(value):
+    fvalue = float(value)
+    if fvalue <= 0 or fvalue > 1:
+        raise argparse.ArgumentTypeError(f"{value} is not a valid probability between 0 and 1")
+    return fvalue
+
+
+def run_selected_stages(args):
+    stage_sequence = ["classifying", "caption", "spotting", "dvc"] if args.stage == "full" else [args.stage]
+    classifying_checkpoint = os.path.join("models", args.model_name, "classifying", "model.pth.tar")
+
+    for stage_name in stage_sequence:
+        stage_start = time.time()
+
+        if stage_name == "classifying":
+            import classifying
+            classifying.main(args)
+        elif stage_name == "caption":
+            import captioning
+            captioning.main(args)
+        elif stage_name == "spotting":
+            import spotting
+            args.weights_encoder = classifying_checkpoint if args.pretrain else None
+            spotting.main(args)
+        elif stage_name == "dvc":
+            import captioning
+            args.weights_encoder = None
+            captioning.dvc(args)
+        else:
+            raise ValueError(f"Unsupported stage: {stage_name}")
+
+        logging.info(f"Stage {stage_name} finished in {time.time()-stage_start} seconds")
 
 
 
@@ -66,7 +101,8 @@ if __name__ == '__main__':
     parser.add_argument("--gpt_path", type=str, default="gpt2", help="Path to the GPT model")
     parser.add_argument("--gpt_type", type=str, default="gpt2", help="Type of gpt")
 
-    parser.add_argument("--stage", type=str, default="", help="Stage of the pipeline to run")
+    parser.add_argument("--stage", type=str, choices=["full", "classifying", "caption", "spotting", "dvc"],
+                        default="full", help="Pipeline stage to run")
 
     args = parser.parse_args()
 
@@ -83,6 +119,8 @@ if __name__ == '__main__':
                             datetime.now().strftime('%Y-%m-%d_%H-%M-%S.log'))
 
     if args.wandb:
+        if wandb is None:
+            raise ModuleNotFoundError("wandb is not installed. Install it or run without --wandb.")
         run = wandb.init(
         project="dvc-res",
         #name=args.model_name,
@@ -106,21 +144,5 @@ if __name__ == '__main__':
 
 
     start=time.time()
-
-    if not args.freeze_encoder:
-        # args.weights_encoder = f"models/{args.model_name}/classifying/model.pth.tar" if args.pretrain else None
-        if (args.stage == "classifying" and args.debug) or not args.debug:
-            classifying.main(args)
-            logging.info(f'Total Execution Time is {time.time()-start} seconds')
-        if (args.stage == "caption" and args.debug) or not args.debug:
-            # args.weights_encoder = f"models/{args.model_name}/classifying/model.pth.tar" if args.pretrain else None
-            captioning.main(args)
-            logging.info(f'Total Execution Time is {time.time()-start} seconds')
-        if (args.stage == "spotting" and args.debug) or not args.debug:
-            args.weights_encoder = f"models/{args.model_name}/classifying/model.pth.tar" if args.pretrain else None
-            spotting.main(args)
-            logging.info(f'Total Execution Time is {time.time()-start} seconds')
-
-    args.weights_encoder = None
-    captioning.dvc(args)
+    run_selected_stages(args)
     logging.info(f'Total Execution Time is {time.time()-start} seconds')

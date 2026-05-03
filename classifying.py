@@ -12,8 +12,6 @@ from model import Video2Spot, Video2Classifcation
 from train import trainer, test_spotting
 from loss import NLLLoss
 
-import wandb
-
 def main(args):
 
     logging.info("Parameters:")
@@ -22,8 +20,10 @@ def main(args):
 
     # create dataset
     if not args.test_only:
-        dataset_Train = SoccerNetDataset(path=args.SoccerNet_path, pos_path=args.Position_path, features=args.features, split=args.split_train, version=args.version, framerate=args.framerate, 
-                                     caption_window_size=args.window_size_caption, spot_window_size=args.window_size_spotting, insert_empty_caption=False)
+        dataset_Train = SoccerNetDataset(path=args.SoccerNet_path, pos_path=args.Position_path, 
+                                        features=args.features, split=args.split_train, version=args.version, 
+                                        framerate=args.framerate, caption_window_size=args.window_size_caption, 
+                                        spot_window_size=args.window_size_spotting, insert_empty_caption=False)
         dataset_Valid = SoccerNetDataset(path=args.SoccerNet_path, pos_path=args.Position_path, features=args.features, split=args.split_valid, version=args.version, framerate=args.framerate, 
                                      caption_window_size=args.window_size_caption, spot_window_size=args.window_size_spotting, insert_empty_caption=False)
         dataset_Valid_metric  = SoccerNetDataset(path=args.SoccerNet_path, pos_path=args.Position_path, features=args.features, split=args.split_valid, version=args.version, framerate=args.framerate, 

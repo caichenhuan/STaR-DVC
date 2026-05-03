@@ -1,19 +1,41 @@
-python main.py --SoccerNet_path='/garage#2/projects/data/features/baiduv2/'  \
---Position_path '/garage/projects/video-LLM/hash_position/' \
---model_name gpt2-train \
---gpt_path '/garage/projects/video-LLM/pretrained-models/gpt2' \
---features 224p_5fps.npy \
---GPU 0 \
---model_type gpt \
---gpt_type gpt2 \
---batch_size 16 \
---framerate 1 \
---evaluation_frequency 10 \
---max_epochs 10 \
---pool PerceiverResamplerGlobalPosition \
---NMS_threshold 0.70 \
---window_size_spotting 30 \
---window_size_caption 30 \
---NMS_window 30 \
---debug \
---stage classifying \
+#!/usr/bin/env bash
+set -euo pipefail
+
+SOCCERNET_PATH="${SOCCERNET_PATH:-/path/to/soccernet}"
+POSITION_PATH="${POSITION_PATH:-/path/to/positions}"
+GPT_PATH="${GPT_PATH:-gpt2}"
+MODEL_NAME="${MODEL_NAME:-gpt2-train}"
+FEATURES="${FEATURES:-224p_5fps.npy}"
+GPU="${GPU:-0}"
+GPT_TYPE="${GPT_TYPE:-gpt2}"
+BATCH_SIZE="${BATCH_SIZE:-16}"
+FRAMERATE="${FRAMERATE:-1}"
+EVAL_FREQ="${EVAL_FREQ:-10}"
+MAX_EPOCHS="${MAX_EPOCHS:-10}"
+POOL="${POOL:-PerceiverResamplerGlobalPosition}"
+NMS_THRESHOLD="${NMS_THRESHOLD:-0.70}"
+WINDOW_SIZE_SPOTTING="${WINDOW_SIZE_SPOTTING:-30}"
+WINDOW_SIZE_CAPTION="${WINDOW_SIZE_CAPTION:-30}"
+NMS_WINDOW="${NMS_WINDOW:-30}"
+STAGE="${STAGE:-classifying}"
+
+python main.py \
+  --SoccerNet_path "$SOCCERNET_PATH" \
+  --Position_path "$POSITION_PATH" \
+  --model_name "$MODEL_NAME" \
+  --gpt_path "$GPT_PATH" \
+  --features "$FEATURES" \
+  --GPU "$GPU" \
+  --model_type gpt \
+  --gpt_type "$GPT_TYPE" \
+  --batch_size "$BATCH_SIZE" \
+  --framerate "$FRAMERATE" \
+  --evaluation_frequency "$EVAL_FREQ" \
+  --max_epochs "$MAX_EPOCHS" \
+  --pool "$POOL" \
+  --NMS_threshold "$NMS_THRESHOLD" \
+  --window_size_spotting "$WINDOW_SIZE_SPOTTING" \
+  --window_size_caption "$WINDOW_SIZE_CAPTION" \
+  --NMS_window "$NMS_WINDOW" \
+  --debug \
+  --stage "$STAGE"

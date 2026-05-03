@@ -13,7 +13,10 @@ from model import Video2Spot
 from train import trainer, test_spotting
 from torch.nn import CrossEntropyLoss
 
-import wandb
+try:
+    import wandb
+except ModuleNotFoundError:
+    wandb = None
 
 def main(args):
 
@@ -159,6 +162,8 @@ if __name__ == '__main__':
     log_path = os.path.join("models", args.model_name,
                             datetime.now().strftime('%Y-%m-%d_%H-%M-%S.log'))
     if args.wandb:
+        if wandb is None:
+            raise ModuleNotFoundError("wandb is not installed. Install it or run without --wandb.")
         run = wandb.init(
         project="NetVLAD-spotting",
         name=args.model_name
