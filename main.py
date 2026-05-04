@@ -21,22 +21,25 @@ def valid_probability(value):
 
 
 def run_selected_stages(args):
-    stage_sequence = ["classifying", "caption", "spotting", "dvc"] if args.stage == "full" else [args.stage]
-    classifying_checkpoint = os.path.join("models", args.model_name, "classifying", "model.pth.tar")
+    # Official ECAI 2025 release:
+    # only spotting.py and captioning.py are used in the pipeline.
+    # The execution order is:
+    #   1) spotting
+    #   2) captioning
+    # captioning.dvc() is kept as the dense-caption inference step inside
+    # the captioning module, so the default full pipeline is spotting ->
+    # caption -> dvc.
+    stage_sequence = ["spotting", "caption", "dvc"] if args.stage == "full" else [args.stage]
 
     for stage_name in stage_sequence:
         stage_start = time.time()
 
-        if stage_name == "classifying":
-            import classifying
-            classifying.main(args)
+        if stage_name == "spotting":
+            import spotting
+            spotting.main(args)
         elif stage_name == "caption":
             import captioning
             captioning.main(args)
-        elif stage_name == "spotting":
-            import spotting
-            args.weights_encoder = classifying_checkpoint if args.pretrain else None
-            spotting.main(args)
         elif stage_name == "dvc":
             import captioning
             args.weights_encoder = None
@@ -82,7 +85,8 @@ if __name__ == '__main__':
     parser.add_argument('--window_size_spotting', required=False, type=int,   default=30,     help='Size of the chunk (in seconds)' )
     parser.add_argument('--window_size_caption', required=False, type=int,   default=30,     help='Size of the chunk (in seconds)' )
     parser.add_argument('--freeze_encoder',  required=False, action='store_true',  help='Perform testing only')
-    parser.add_argument('--pretrain',   required=False, action='store_true',  help='Perform testing only' )
+    parser.add_argument('--pretrain',   required=False, action='store_true',
+                        help='Legacy flag kept for backward compatibility; not used in the official release pipeline' )
     parser.add_argument('--weights_encoder',  required=False, type=str, default=None)
     parser.add_argument('--num_layers',  required=False, type=int, default=2)
     
@@ -101,8 +105,8 @@ if __name__ == '__main__':
     parser.add_argument("--gpt_path", type=str, default="gpt2", help="Path to the GPT model")
     parser.add_argument("--gpt_type", type=str, default="gpt2", help="Type of gpt")
 
-    parser.add_argument("--stage", type=str, choices=["full", "classifying", "caption", "spotting", "dvc"],
-                        default="full", help="Pipeline stage to run")
+    parser.add_argument("--stage", type=str, choices=["full", "caption", "spotting", "dvc"],
+                        default="full", help="Pipeline stage to run. Official order: spotting -> caption")
 
     args = parser.parse_args()
 

@@ -17,8 +17,8 @@ NMS_THRESHOLD="${NMS_THRESHOLD:-0.70}"
 WINDOW_SIZE_SPOTTING="${WINDOW_SIZE_SPOTTING:-30}"
 WINDOW_SIZE_CAPTION="${WINDOW_SIZE_CAPTION:-30}"
 NMS_WINDOW="${NMS_WINDOW:-30}"
-
-EXTRA_ARGS=(--pretrain)
+# Official release order: spotting first, then captioning.
+EXTRA_ARGS=()
 if [[ "${WANDB:-0}" == "1" ]]; then
   EXTRA_ARGS+=(--wandb)
 fi
