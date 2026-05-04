@@ -17,8 +17,7 @@ NMS_THRESHOLD="${NMS_THRESHOLD:-0.70}"
 WINDOW_SIZE_SPOTTING="${WINDOW_SIZE_SPOTTING:-30}"
 WINDOW_SIZE_CAPTION="${WINDOW_SIZE_CAPTION:-30}"
 NMS_WINDOW="${NMS_WINDOW:-30}"
-# Debug a single stage from the official two-stage release pipeline.
-STAGE="${STAGE:-spotting}"
+STAGE="${STAGE:-classifying}"
 
 python main.py \
   --SoccerNet_path "$SOCCERNET_PATH" \

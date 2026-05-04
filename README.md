@@ -11,18 +11,12 @@ This repository contains the training and evaluation code for long-form dense vi
 
 ## Overview
 
-The official ECAI 2025 release uses a two-module pipeline:
+STaR is built as a four-stage pipeline:
 
-1. `spotting`: event spotting over full matches
-2. `caption`: caption training / dense caption generation in `captioning.py`
-
-In the default `full` run, the execution order is:
-
-1. `spotting`
-2. `caption`
-3. `dvc`
-
-where `dvc` is the final inference step implemented inside `captioning.py`.
+1. `classifying`: event classification pretraining for the shared encoder
+2. `caption`: caption model training on ground-truth temporal windows
+3. `spotting`: event spotting over full matches
+4. `dvc`: dense video captioning from spotting predictions
 
 The main shared components are:
 
@@ -35,7 +29,7 @@ The main shared components are:
 ```text
 .
 ├── main.py               # unified pipeline entry point
-├── classifying.py        # legacy pretraining script, not used in the official release pipeline
+├── classifying.py        # classification pretraining
 ├── captioning.py         # caption training and DVC inference
 ├── spotting.py           # event spotting
 ├── dataset.py            # SoccerNet data loading
@@ -97,7 +91,7 @@ The code expects feature files named as `1_<features>` and `2_<features>`.
 
 ## Training and Evaluation
 
-Run the official pipeline:
+Run the full pipeline:
 
 ```bash
 SOCCERNET_PATH=/path/to/soccernet \
@@ -125,6 +119,7 @@ python main.py \
 Debug a specific stage:
 
 ```bash
+STAGE=classifying bash run_debug.sh
 STAGE=caption bash run_debug.sh
 STAGE=spotting bash run_debug.sh
 STAGE=dvc bash run_debug.sh
@@ -133,6 +128,7 @@ STAGE=dvc bash run_debug.sh
 Available stages:
 
 - `full`
+- `classifying`
 - `caption`
 - `spotting`
 - `dvc`
@@ -162,4 +158,3 @@ The formatted BibTeX entry can be added once the final publication metadata is f
 
 - This public release does not include datasets, pretrained GPT checkpoints, trained weights, or private experiment logs.
 - The experimental `efficient_memory` path is kept in the codebase but disabled by default in the public release.
-- `classifying.py` is retained for archival purposes, but the official released pipeline only uses `spotting.py` and `captioning.py`.
